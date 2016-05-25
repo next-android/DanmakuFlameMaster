@@ -1,6 +1,7 @@
 
 package com.sample;
 
+import android.annotation.TargetApi;
 import android.app.Activity;
 import android.content.pm.ActivityInfo;
 import android.graphics.Canvas;
@@ -8,10 +9,12 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
+import android.media.AudioManager;
 import android.media.MediaPlayer;
+import android.media.SoundPool;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
-import master.flame.danmaku.danmaku.util.SystemClock;
 import android.text.Spannable;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
@@ -50,8 +53,9 @@ import master.flame.danmaku.danmaku.parser.BaseDanmakuParser;
 import master.flame.danmaku.danmaku.parser.IDataSource;
 import master.flame.danmaku.danmaku.parser.android.BiliDanmukuParser;
 import master.flame.danmaku.danmaku.util.IOUtils;
+import master.flame.danmaku.danmaku.util.SystemClock;
 
-public class MainActivity extends Activity implements View.OnClickListener {
+public class MainActivity extends Activity implements View.OnClickListener{
 
     private IDanmakuView mDanmakuView;
 
@@ -77,6 +81,9 @@ public class MainActivity extends Activity implements View.OnClickListener {
 
     private Button mBtnSendDanmakus;
     private DanmakuContext mContext;
+
+    private GL2JNILib lib = new GL2JNILib();
+
     private BaseCacheStuffer.Proxy mCacheStufferAdapter = new BaseCacheStuffer.Proxy() {
 
         private Drawable mDrawable;
@@ -151,11 +158,31 @@ public class MainActivity extends Activity implements View.OnClickListener {
         }
     }
 
+    @TargetApi(Build.VERSION_CODES.FROYO)
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         findViews();
+
+        lib.setContext(this);
+        lib.setSoundPool(new SoundPool(10, AudioManager.STREAM_MUSIC, 0));
+        lib.getSoundPool().setOnLoadCompleteListener(new SoundPool.OnLoadCompleteListener() {
+            @Override
+            public void onLoadComplete(SoundPool soundPool, int sampleId,
+                                       int status) {
+                lib.setLoaded(true);
+            }
+        });
+        lib.setSoundIDA(lib.getSoundPool().load(this, R.raw.a, 1));
+        lib.setSoundIDB(lib.getSoundPool().load(this, R.raw.b, 1));
+        lib.setSoundIDG(lib.getSoundPool().load(this, R.raw.g, 1));
+        lib.setSoundIDCSharp(lib.getSoundPool().load(this, R.raw.cs, 1));
+        lib.setSoundIDC(lib.getSoundPool().load(this, R.raw.cs, 1));
+        lib.setSoundIDD(lib.getSoundPool().load(this, R.raw.d, 1));
+        lib.setSoundIDE(lib.getSoundPool().load(this, R.raw.e, 1));
+        lib.setSoundIDFSharp(lib.getSoundPool().load(this, R.raw.fs, 1));
+        lib.setAudioManager((AudioManager) getSystemService(AUDIO_SERVICE));
     }
 
     private BaseDanmakuParser createParser(InputStream stream) {
@@ -187,6 +214,7 @@ public class MainActivity extends Activity implements View.OnClickListener {
     private void findViews() {
 
         mMediaController = findViewById(R.id.media_controller);
+        mMediaController.setVisibility(View.GONE);
         mBtnRotate = (Button) findViewById(R.id.rotate);
         mBtnHideDanmaku = (Button) findViewById(R.id.btn_hide);
         mBtnShowDanmaku = (Button) findViewById(R.id.btn_show);
@@ -211,7 +239,7 @@ public class MainActivity extends Activity implements View.OnClickListener {
 
         // 设置最大显示行数
         HashMap<Integer, Integer> maxLinesPair = new HashMap<Integer, Integer>();
-        maxLinesPair.put(BaseDanmaku.TYPE_SCROLL_RL, 5); // 滚动弹幕最大显示5行
+        maxLinesPair.put(BaseDanmaku.TYPE_SCROLL_RL, 2); // 滚动弹幕最大显示5行
         // 设置是否禁止重叠
         HashMap<Integer, Boolean> overlappingEnablePair = new HashMap<Integer, Boolean>();
         overlappingEnablePair.put(BaseDanmaku.TYPE_SCROLL_RL, true);
@@ -260,23 +288,25 @@ public class MainActivity extends Activity implements View.OnClickListener {
             mDanmakuView.prepare(mParser, mContext);
             mDanmakuView.showFPS(true);
             mDanmakuView.enableDanmakuDrawingCache(true);
-            ((View) mDanmakuView).setOnClickListener(new View.OnClickListener() {
-
-                @Override
-                public void onClick(View view) {
-                    mMediaController.setVisibility(View.VISIBLE);
-                }
-            });
         }
 
         if (mVideoView != null) {
             mVideoView.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
                 @Override
                 public void onPrepared(MediaPlayer mediaPlayer) {
+                    mediaPlayer.setVolume(0f, 0f);
                     mediaPlayer.start();
                 }
             });
-            mVideoView.setVideoPath(Environment.getExternalStorageDirectory() + "/1.flv");
+            mVideoView.setVideoPath(Environment.getExternalStorageDirectory() + "/yftk.flv");
+
+            PaintView pv = (PaintView) findViewById(R.id.touchView);
+            pv.setTouchListener(new PaintView.TouchListener() {
+                @Override
+                public void onTouch() {
+                    lib.playA();
+                }
+            });
         }
 
     }
